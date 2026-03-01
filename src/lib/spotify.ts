@@ -7,7 +7,22 @@ import type { SpotifyNowPlaying } from "@/lib/types";
 const SPOTIFY_SCOPE = [
   "user-read-currently-playing",
   "user-read-playback-state",
+  "user-modify-playback-state",
 ].join(" ");
+
+export type SpotifyControlAction = "toggle_playback" | "next_track";
+export type SpotifyControlErrorCode =
+  | "no_active_device"
+  | "premium_required"
+  | "forbidden"
+  | "rate_limited"
+  | "unavailable";
+
+export type SpotifyControlResult = {
+  ok: boolean;
+  errorCode: SpotifyControlErrorCode | null;
+  errorMessage: string | null;
+};
 
 type TokenResponse = {
   access_token: string;
@@ -138,6 +153,9 @@ export async function fetchSpotifyNowPlaying(accessToken: string): Promise<Spoti
   if (response.status === 204) {
     return {
       linked: true,
+      controllable: true,
+      controlErrorCode: null,
+      controlErrorMessage: null,
       isPlaying: false,
       trackName: null,
       artistName: null,
@@ -167,6 +185,9 @@ export async function fetchSpotifyNowPlaying(accessToken: string): Promise<Spoti
 
   return {
     linked: true,
+    controllable: true,
+    controlErrorCode: null,
+    controlErrorMessage: null,
     isPlaying: payload.is_playing,
     trackName: payload.item?.name ?? null,
     artistName: payload.item?.artists.map((artist) => artist.name).join(", ") ?? null,
@@ -176,6 +197,81 @@ export async function fetchSpotifyNowPlaying(accessToken: string): Promise<Spoti
     progressMs: payload.progress_ms ?? null,
     durationMs: payload.item?.duration_ms ?? null,
   };
+}
+
+async function parseSpotifyControlError(response: Response): Promise<SpotifyControlResult> {
+  let message = "Spotify control unavailable.";
+  let reason = "";
+  try {
+    const payload = (await response.json()) as
+      | { error?: { reason?: string; message?: string } }
+      | undefined;
+    reason = payload?.error?.reason ?? "";
+    message = payload?.error?.message ?? message;
+  } catch {
+    // Ignore JSON parse errors and use defaults.
+  }
+
+  if (response.status === 404 || reason === "NO_ACTIVE_DEVICE") {
+    return { ok: false, errorCode: "no_active_device", errorMessage: "No active Spotify device." };
+  }
+  if (response.status === 403 && reason === "PREMIUM_REQUIRED") {
+    return { ok: false, errorCode: "premium_required", errorMessage: "Spotify Premium is required for controls." };
+  }
+  if (response.status === 403) {
+    return { ok: false, errorCode: "forbidden", errorMessage: message };
+  }
+  if (response.status === 429) {
+    return { ok: false, errorCode: "rate_limited", errorMessage: "Spotify rate limit hit. Try again shortly." };
+  }
+  return { ok: false, errorCode: "unavailable", errorMessage: message };
+}
+
+export async function controlSpotifyPlayback(
+  accessToken: string,
+  action: SpotifyControlAction,
+): Promise<SpotifyControlResult> {
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+  };
+
+  if (action === "toggle_playback") {
+    const stateResponse = await fetch("https://api.spotify.com/v1/me/player", {
+      headers,
+      cache: "no-store",
+    });
+
+    if (stateResponse.status === 204) {
+      return { ok: false, errorCode: "no_active_device", errorMessage: "No active Spotify device." };
+    }
+    if (!stateResponse.ok) {
+      return parseSpotifyControlError(stateResponse);
+    }
+
+    const playerState = (await stateResponse.json()) as { is_playing?: boolean };
+    const endpoint = playerState.is_playing ? "pause" : "play";
+    const controlResponse = await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
+      method: "PUT",
+      headers,
+      cache: "no-store",
+    });
+
+    if (controlResponse.ok || controlResponse.status === 204) {
+      return { ok: true, errorCode: null, errorMessage: null };
+    }
+    return parseSpotifyControlError(controlResponse);
+  }
+
+  const nextTrackResponse = await fetch("https://api.spotify.com/v1/me/player/next", {
+    method: "POST",
+    headers,
+    cache: "no-store",
+  });
+
+  if (nextTrackResponse.ok || nextTrackResponse.status === 204) {
+    return { ok: true, errorCode: null, errorMessage: null };
+  }
+  return parseSpotifyControlError(nextTrackResponse);
 }
 
 export function encryptSpotifyToken(raw: string) {

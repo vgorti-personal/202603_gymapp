@@ -14,6 +14,7 @@ export const createUserSchema = z.object({
   defaultCity: z.string().min(2).max(60).optional(),
   timezone: z.string().min(2).max(60).optional(),
   spotifyEnabled: z.boolean().optional(),
+  templateSelectionMode: z.enum(["persistent", "session_prompt"]).optional(),
 });
 
 export const updateUserSchema = z.object({
@@ -21,6 +22,7 @@ export const updateUserSchema = z.object({
   defaultCity: z.string().min(2).max(60).optional(),
   timezone: z.string().min(2).max(60).optional(),
   spotifyEnabled: z.boolean().optional(),
+  templateSelectionMode: z.enum(["persistent", "session_prompt"]).optional(),
 });
 
 export const updateWorkoutSourceSchema = z.object({

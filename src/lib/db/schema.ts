@@ -13,12 +13,19 @@ export const workoutSourceTypeEnum = pgEnum("workout_source_type", [
 ]);
 
 export const calendarStatusEnum = pgEnum("calendar_status", ["planned", "done"]);
+export const templateSelectionModeEnum = pgEnum("template_selection_mode", [
+  "persistent",
+  "session_prompt",
+]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   slug: text("slug").notNull().unique(),
   displayName: text("display_name").notNull(),
   spotifyEnabled: boolean("spotify_enabled").notNull().default(true),
+  templateSelectionMode: templateSelectionModeEnum("template_selection_mode")
+    .notNull()
+    .default("persistent"),
   defaultCity: text("default_city").notNull().default("Atlanta, GA, USA"),
   timezone: text("timezone").notNull().default("America/New_York"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

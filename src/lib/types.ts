@@ -39,6 +39,7 @@ export type UserProfile = {
   slug: string;
   displayName: string;
   spotifyEnabled: boolean;
+  templateSelectionMode: "persistent" | "session_prompt";
   defaultCity: string;
   timezone: string;
 };
@@ -55,6 +56,9 @@ export type WorkoutSource = {
 
 export type SpotifyNowPlaying = {
   linked: boolean;
+  controllable: boolean;
+  controlErrorCode: "no_active_device" | "premium_required" | "forbidden" | "rate_limited" | "unavailable" | null;
+  controlErrorMessage: string | null;
   isPlaying: boolean;
   trackName: string | null;
   artistName: string | null;
@@ -67,10 +71,16 @@ export type SpotifyNowPlaying = {
 
 export type WeatherSnapshot = {
   city: string;
+  requestedCity: string;
   temperatureC: number;
   weatherDescription: string;
   highC: number;
   lowC: number;
+};
+
+export type SheetTab = {
+  name: string;
+  gid: string;
 };
 
 export type CalendarEventDto = {

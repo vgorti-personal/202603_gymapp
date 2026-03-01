@@ -12,6 +12,7 @@ function toUserProfile(row: typeof users.$inferSelect): UserProfile {
     slug: row.slug,
     displayName: row.displayName,
     spotifyEnabled: row.spotifyEnabled,
+    templateSelectionMode: row.templateSelectionMode,
     defaultCity: row.defaultCity,
     timezone: row.timezone,
   };
@@ -164,6 +165,7 @@ export async function createUser(payload: {
   defaultCity?: string;
   timezone?: string;
   spotifyEnabled?: boolean;
+  templateSelectionMode?: "persistent" | "session_prompt";
 }) {
   const rows = await db
     .insert(users)
@@ -173,6 +175,7 @@ export async function createUser(payload: {
       defaultCity: payload.defaultCity ?? "Atlanta, GA, USA",
       timezone: payload.timezone ?? "America/New_York",
       spotifyEnabled: payload.spotifyEnabled ?? true,
+      templateSelectionMode: payload.templateSelectionMode ?? "persistent",
       updatedAt: new Date(),
     })
     .returning();
@@ -186,6 +189,7 @@ export async function updateUserById(
     defaultCity: string;
     timezone: string;
     spotifyEnabled: boolean;
+    templateSelectionMode: "persistent" | "session_prompt";
   }>,
 ) {
   const rows = await db

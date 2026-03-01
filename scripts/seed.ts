@@ -10,6 +10,7 @@ async function seedUsers() {
       defaultCity: "Atlanta, GA, USA",
       timezone: "America/New_York",
       spotifyEnabled: true,
+      templateSelectionMode: "persistent" as const,
     },
     {
       slug: "emily",
@@ -17,6 +18,7 @@ async function seedUsers() {
       defaultCity: "Atlanta, GA, USA",
       timezone: "America/New_York",
       spotifyEnabled: true,
+      templateSelectionMode: "session_prompt" as const,
     },
     {
       slug: "guest",
@@ -24,6 +26,7 @@ async function seedUsers() {
       defaultCity: "Atlanta, GA, USA",
       timezone: "America/New_York",
       spotifyEnabled: false,
+      templateSelectionMode: "session_prompt" as const,
     },
   ];
 
@@ -39,6 +42,7 @@ async function seedUsers() {
           defaultCity: user.defaultCity,
           timezone: user.timezone,
           spotifyEnabled: user.spotifyEnabled,
+          templateSelectionMode: user.templateSelectionMode,
           updatedAt: new Date(),
         },
       })

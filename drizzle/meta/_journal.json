@@ -15,6 +15,13 @@
       "when": 1772392264698,
       "tag": "0001_conscious_bloodstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772394757087,
+      "tag": "0002_fast_warhawk",
+      "breakpoints": true
     }
   ]
 }

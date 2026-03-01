@@ -1,31 +1,7 @@
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-import { db, schema } from "@/lib/db";
-import { decryptSpotifyToken, encryptSpotifyToken, fetchSpotifyNowPlaying, refreshSpotifyToken } from "@/lib/spotify";
-
-async function refreshAndPersistAccount(account: typeof schema.spotifyAccounts.$inferSelect) {
-  const refreshToken = decryptSpotifyToken(account.refreshToken);
-  const refreshed = await refreshSpotifyToken(refreshToken);
-  const nextRefreshToken = refreshed.refresh_token ?? refreshToken;
-  const nextAccessTokenEncrypted = encryptSpotifyToken(refreshed.access_token);
-  const nextRefreshTokenEncrypted = encryptSpotifyToken(nextRefreshToken);
-  const nextExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000);
-
-  await db
-    .update(schema.spotifyAccounts)
-    .set({
-      accessToken: nextAccessTokenEncrypted,
-      refreshToken: nextRefreshTokenEncrypted,
-      expiresAt: nextExpiresAt,
-      updatedAt: new Date(),
-    })
-    .where(eq(schema.spotifyAccounts.id, account.id));
-
-  return {
-    accessToken: refreshed.access_token,
-  };
-}
+import { getSpotifyAccessTokenForUser, refreshAndPersistAccount } from "@/lib/spotify-accounts";
+import { fetchSpotifyNowPlaying } from "@/lib/spotify";
 
 export async function GET(request: Request) {
   const userId = new URL(request.url).searchParams.get("userId");
@@ -33,16 +9,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "userId query param is required." }, { status: 400 });
   }
 
-  const rows = await db
-    .select()
-    .from(schema.spotifyAccounts)
-    .where(eq(schema.spotifyAccounts.userId, userId))
-    .limit(1);
-
-  const account = rows[0];
-  if (!account) {
+  const resolved = await getSpotifyAccessTokenForUser(userId);
+  if (!resolved) {
     return NextResponse.json({
       linked: false,
+      controllable: false,
+      controlErrorCode: null,
+      controlErrorMessage: null,
       isPlaying: false,
       trackName: null,
       artistName: null,
@@ -54,12 +27,8 @@ export async function GET(request: Request) {
     });
   }
 
-  let accessToken = decryptSpotifyToken(account.accessToken);
-
-  if (account.expiresAt.getTime() <= Date.now() + 20_000) {
-    const refreshed = await refreshAndPersistAccount(account);
-    accessToken = refreshed.accessToken;
-  }
+  const { account } = resolved;
+  const accessToken = resolved.accessToken;
 
   try {
     const payload = await fetchSpotifyNowPlaying(accessToken);
@@ -73,7 +42,20 @@ export async function GET(request: Request) {
     } catch (retryError) {
       console.error(retryError);
       return NextResponse.json(
-        { error: "Spotify now playing unavailable." },
+        {
+          linked: true,
+          controllable: false,
+          controlErrorCode: "unavailable",
+          controlErrorMessage: "Spotify now playing unavailable.",
+          isPlaying: false,
+          trackName: null,
+          artistName: null,
+          albumName: null,
+          albumArtUrl: null,
+          externalUrl: null,
+          progressMs: null,
+          durationMs: null,
+        },
         { status: 502 },
       );
     }

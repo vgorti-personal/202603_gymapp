@@ -16,6 +16,7 @@ type AdminUser = {
   defaultCity: string;
   timezone: string;
   spotifyEnabled: boolean;
+  templateSelectionMode: "persistent" | "session_prompt";
   spotifyLinked: boolean;
   workoutSource: {
     sourceType: "google_sheet" | "template";
@@ -222,6 +223,7 @@ export function AdminClient({ authenticated, users: initialUsers }: AdminClientP
                       defaultCity: next.defaultCity,
                       timezone: next.timezone,
                       spotifyEnabled: next.spotifyEnabled,
+                      templateSelectionMode: next.templateSelectionMode,
                     };
 
                     const userResponse = await fetch(`/api/admin/users/${next.id}`, {
@@ -338,6 +340,23 @@ function UserConfigCard({
             />
             Spotify enabled ({user.spotifyLinked ? "linked" : "unlinked"})
           </label>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <label className="text-xs uppercase tracking-[0.14em] text-slate-300">Template behavior</label>
+          <select
+            className="rounded-lg border border-white/20 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/40"
+            onChange={(event) =>
+              onChange({
+                ...user,
+                templateSelectionMode: event.target.value as "persistent" | "session_prompt",
+              })
+            }
+            value={user.templateSelectionMode}
+          >
+            <option value="persistent">Persistent default workout</option>
+            <option value="session_prompt">Prompt each dashboard load</option>
+          </select>
         </div>
 
         <div className="rounded-lg border border-white/10 bg-slate-900/80 p-3">
