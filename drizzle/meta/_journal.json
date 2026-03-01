@@ -8,6 +8,13 @@
       "when": 1772389393149,
       "tag": "0000_worried_liz_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772392264698,
+      "tag": "0001_conscious_bloodstrike",
+      "breakpoints": true
     }
   ]
 }

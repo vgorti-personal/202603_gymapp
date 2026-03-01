@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Plus, Save, ShieldCheck } from "lucide-react";
+import { Home, LogOut, Plus, Save, ShieldCheck } from "lucide-react";
 
 import { Panel } from "@/components/ui/panel";
 import { slugify } from "@/lib/utils";
@@ -31,6 +32,11 @@ type AdminClientProps = {
   users: AdminUser[];
 };
 
+type Feedback = {
+  type: "success" | "error";
+  message: string;
+};
+
 export function AdminClient({ authenticated, users: initialUsers }: AdminClientProps) {
   const router = useRouter();
   const [passcode, setPasscode] = useState("");
@@ -38,8 +44,10 @@ export function AdminClient({ authenticated, users: initialUsers }: AdminClientP
   const [users, setUsers] = useState(initialUsers);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [newUserName, setNewUserName] = useState("");
-  const [newUserCity, setNewUserCity] = useState("New York");
+  const [newUserCity, setNewUserCity] = useState("Atlanta, GA, USA");
   const [newUserTimezone, setNewUserTimezone] = useState("America/New_York");
+  const [addUserFeedback, setAddUserFeedback] = useState<Feedback | null>(null);
+  const [saveFeedbackByUser, setSaveFeedbackByUser] = useState<Record<string, Feedback>>({});
 
   async function login() {
     setAuthError(null);
@@ -61,22 +69,35 @@ export function AdminClient({ authenticated, users: initialUsers }: AdminClientP
   }
 
   async function addUser() {
-    if (!newUserName.trim()) {
+    setAddUserFeedback(null);
+    const displayName = newUserName.trim();
+    if (!displayName) {
+      setAddUserFeedback({ type: "error", message: "Display name is required." });
       return;
     }
+
     const response = await fetch("/api/admin/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        displayName: newUserName,
-        slug: slugify(newUserName),
+        displayName,
+        slug: slugify(displayName),
         defaultCity: newUserCity,
         timezone: newUserTimezone,
       }),
     });
+
     if (!response.ok) {
+      const json = (await response.json().catch(() => null)) as { error?: string } | null;
+      setAddUserFeedback({
+        type: "error",
+        message: typeof json?.error === "string" ? json.error : "Could not add user.",
+      });
       return;
     }
+
+    setAddUserFeedback({ type: "success", message: "User added successfully." });
+    setNewUserName("");
     router.refresh();
   }
 
@@ -86,7 +107,7 @@ export function AdminClient({ authenticated, users: initialUsers }: AdminClientP
         <Panel subtitle="Passcode-protected controls" title="Admin Access">
           <div className="space-y-3">
             <p className="text-sm text-slate-300">
-              Enter your admin passcode to manage users, workout sources, and dashboard defaults.
+              Enter your admin passcode to manage users, weather city, timezone, and workout source settings.
             </p>
             <input
               className="w-full rounded-lg border border-white/20 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/40"
@@ -114,18 +135,33 @@ export function AdminClient({ authenticated, users: initialUsers }: AdminClientP
     <main className="mx-auto max-w-7xl space-y-4 px-4 py-8">
       <Panel
         actions={
-          <button
-            className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-3 py-2 text-sm text-slate-100 hover:border-red-300/40"
-            onClick={logout}
-            type="button"
-          >
-            <LogOut size={16} />
-            Logout
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-3 py-2 text-sm text-slate-100 hover:border-emerald-300/40"
+              href="/"
+            >
+              <Home size={14} />
+              Back to Home
+            </Link>
+            <button
+              className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-3 py-2 text-sm text-slate-100 hover:border-red-300/40"
+              onClick={logout}
+              type="button"
+            >
+              <LogOut size={16} />
+              Logout
+            </button>
+          </div>
         }
-        subtitle="Add users and tune user-specific settings"
+        subtitle="Configure user workout source, weather city, timezone, and Spotify settings"
         title="Gym Dashboard Admin"
       >
+        <p className="text-sm text-slate-300">
+          Add users below, then manage each user card in the section after it.
+        </p>
+      </Panel>
+
+      <Panel subtitle="Create a new dashboard profile" title="Add User">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <input
             className="rounded-lg border border-white/20 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/40"
@@ -136,7 +172,7 @@ export function AdminClient({ authenticated, users: initialUsers }: AdminClientP
           <input
             className="rounded-lg border border-white/20 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/40"
             onChange={(event) => setNewUserCity(event.target.value)}
-            placeholder="Default city"
+            placeholder="Default weather city"
             value={newUserCity}
           />
           <input
@@ -147,51 +183,95 @@ export function AdminClient({ authenticated, users: initialUsers }: AdminClientP
           />
           <button
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400"
-            onClick={addUser}
+            onClick={() => addUser().catch((error) => console.error(error))}
             type="button"
           >
             <Plus size={16} />
             Add User
           </button>
         </div>
+        {addUserFeedback ? (
+          <p className={addUserFeedback.type === "success" ? "mt-3 text-sm text-emerald-300" : "mt-3 text-sm text-red-300"}>
+            {addUserFeedback.message}
+          </p>
+        ) : null}
       </Panel>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {users.map((user) => (
-          <UserConfigCard
-            key={user.id}
-            onChange={(next) => {
-              setUsers(users.map((entry) => (entry.id === user.id ? next : entry)));
-            }}
-            onSave={async (next) => {
-              setSavingId(user.id);
-              try {
-                const userPayload = {
-                  displayName: next.displayName,
-                  defaultCity: next.defaultCity,
-                  timezone: next.timezone,
-                  spotifyEnabled: next.spotifyEnabled,
-                };
-                await fetch(`/api/admin/users/${next.id}`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(userPayload),
-                });
-                await fetch(`/api/admin/users/${next.id}/workout-source`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(next.workoutSource),
-                });
-                router.refresh();
-              } finally {
-                setSavingId(null);
-              }
-            }}
-            saving={savingId === user.id}
-            user={user}
-          />
-        ))}
-      </div>
+      <Panel subtitle="Manage existing user settings" title="User Configuration">
+        {users.length === 0 ? (
+          <p className="text-sm text-slate-300">No users found.</p>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {users.map((user) => (
+              <UserConfigCard
+                feedback={saveFeedbackByUser[user.id] ?? null}
+                key={user.id}
+                onChange={(next) => {
+                  setUsers(users.map((entry) => (entry.id === user.id ? next : entry)));
+                }}
+                onSave={async (next) => {
+                  setSavingId(user.id);
+                  setSaveFeedbackByUser((current) => {
+                    const copy = { ...current };
+                    delete copy[user.id];
+                    return copy;
+                  });
+                  try {
+                    const userPayload = {
+                      displayName: next.displayName,
+                      defaultCity: next.defaultCity,
+                      timezone: next.timezone,
+                      spotifyEnabled: next.spotifyEnabled,
+                    };
+
+                    const userResponse = await fetch(`/api/admin/users/${next.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(userPayload),
+                    });
+
+                    if (!userResponse.ok) {
+                      setSaveFeedbackByUser((current) => ({
+                        ...current,
+                        [user.id]: { type: "error", message: "User settings failed to save." },
+                      }));
+                      return;
+                    }
+
+                    const sourceResponse = await fetch(`/api/admin/users/${next.id}/workout-source`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(next.workoutSource),
+                    });
+
+                    if (!sourceResponse.ok) {
+                      const payload = (await sourceResponse.json().catch(() => null)) as { error?: string } | null;
+                      setSaveFeedbackByUser((current) => ({
+                        ...current,
+                        [user.id]: {
+                          type: "error",
+                          message: typeof payload?.error === "string" ? payload.error : "Workout source failed to save.",
+                        },
+                      }));
+                      return;
+                    }
+
+                    setSaveFeedbackByUser((current) => ({
+                      ...current,
+                      [user.id]: { type: "success", message: "User settings saved." },
+                    }));
+                    router.refresh();
+                  } finally {
+                    setSavingId(null);
+                  }
+                }}
+                saving={savingId === user.id}
+                user={user}
+              />
+            ))}
+          </div>
+        )}
+      </Panel>
     </main>
   );
 }
@@ -201,11 +281,13 @@ function UserConfigCard({
   onChange,
   onSave,
   saving,
+  feedback,
 }: {
   user: AdminUser;
   onChange: (next: AdminUser) => void;
   onSave: (next: AdminUser) => Promise<void>;
   saving: boolean;
+  feedback: Feedback | null;
 }) {
   const source = user.workoutSource ?? {
     sourceType: "template" as const,
@@ -236,13 +318,16 @@ function UserConfigCard({
           <input
             className="rounded-lg border border-white/20 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/40"
             onChange={(event) => onChange({ ...user, defaultCity: event.target.value })}
+            placeholder="Weather city"
             value={user.defaultCity}
           />
         </div>
+
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <input
             className="rounded-lg border border-white/20 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/40"
             onChange={(event) => onChange({ ...user, timezone: event.target.value })}
+            placeholder="Timezone"
             value={user.timezone}
           />
           <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-200">
@@ -254,6 +339,7 @@ function UserConfigCard({
             Spotify enabled ({user.spotifyLinked ? "linked" : "unlinked"})
           </label>
         </div>
+
         <div className="rounded-lg border border-white/10 bg-slate-900/80 p-3">
           <p className="mb-2 text-xs uppercase tracking-[0.14em] text-slate-300">Workout Source</p>
           <select
@@ -316,6 +402,7 @@ function UserConfigCard({
                   </option>
                 ))}
               </select>
+
               <select
                 className="rounded-lg border border-white/20 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/40"
                 onChange={(event) =>
@@ -332,6 +419,7 @@ function UserConfigCard({
                   </option>
                 ))}
               </select>
+
               <select
                 className="rounded-lg border border-white/20 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/40"
                 onChange={(event) =>
@@ -351,10 +439,17 @@ function UserConfigCard({
             </div>
           )}
         </div>
+
+        {feedback ? (
+          <p className={feedback.type === "success" ? "text-xs text-emerald-300" : "text-xs text-red-300"}>
+            {feedback.message}
+          </p>
+        ) : null}
+
         <button
           className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
           disabled={saving}
-          onClick={() => onSave({ ...user, workoutSource: source })}
+          onClick={() => onSave({ ...user, workoutSource: source }).catch((error) => console.error(error))}
           type="button"
         >
           <Save size={16} />

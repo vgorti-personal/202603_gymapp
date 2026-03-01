@@ -170,7 +170,7 @@ export async function createUser(payload: {
     .values({
       displayName: payload.displayName,
       slug: payload.slug,
-      defaultCity: payload.defaultCity ?? "New York",
+      defaultCity: payload.defaultCity ?? "Atlanta, GA, USA",
       timezone: payload.timezone ?? "America/New_York",
       spotifyEnabled: payload.spotifyEnabled ?? true,
       updatedAt: new Date(),

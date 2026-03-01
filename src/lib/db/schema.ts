@@ -19,7 +19,7 @@ export const users = pgTable("users", {
   slug: text("slug").notNull().unique(),
   displayName: text("display_name").notNull(),
   spotifyEnabled: boolean("spotify_enabled").notNull().default(true),
-  defaultCity: text("default_city").notNull().default("New York"),
+  defaultCity: text("default_city").notNull().default("Atlanta, GA, USA"),
   timezone: text("timezone").notNull().default("America/New_York"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

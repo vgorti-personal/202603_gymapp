@@ -20,7 +20,7 @@ export default async function Home() {
             <h1 className="mt-1 text-4xl font-semibold text-white">Gym Dashboard</h1>
             <p className="mt-2 max-w-xl text-sm text-slate-300">
               Pick a user profile to open a personalized cast-friendly dashboard with workout plan,
-              weather, clock, Spotify, and session widgets.
+              weather, clock, Spotify, and workout source controls.
             </p>
           </div>
           <Link

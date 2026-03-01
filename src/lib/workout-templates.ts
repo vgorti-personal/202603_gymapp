@@ -131,7 +131,7 @@ export const WORKOUT_TEMPLATES: WorkoutTemplate[] = [
   {
     id: "maintenance-full-body-3x",
     name: "Maintenance Full Body 3x",
-    description: "Three efficient sessions per week for consistency and general fitness.",
+    description: "Three efficient workouts per week for consistency and general fitness.",
     goal: "maintenance",
     split: "full_body",
     days: [
@@ -203,7 +203,7 @@ export const WORKOUT_TEMPLATES: WorkoutTemplate[] = [
   {
     id: "olympic-five-day-lite",
     name: "Olympic Five Day Lite",
-    description: "Frequent but moderate Olympic sessions suitable for home gym setups.",
+    description: "Frequent but moderate Olympic workouts suitable for home gym setups.",
     goal: "olympic",
     split: "full_body",
     days: [
